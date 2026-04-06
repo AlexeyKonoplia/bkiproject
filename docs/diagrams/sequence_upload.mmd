@@ -1,0 +1,15 @@
+sequenceDiagram
+  participant Client as Client
+  participant API as FastAPI app
+  participant DB as PostgreSQL + pgvector
+  participant Ollama as Ollama
+
+  Client->>API: POST /upload (PDF/DOCX, metadata) + JWT(admin)
+  API->>DB: INSERT source_documents
+  API->>DB: INSERT text_chunks (chunk_text, page_number)
+  API->>Ollama: embeddings for chunks
+  Ollama-->>API: vectors
+  API->>DB: UPDATE text_chunks.embedding (via insert)
+  DB-->>API: OK
+  API-->>Client: {status: indexed, source_document_id, chunks_count}
+

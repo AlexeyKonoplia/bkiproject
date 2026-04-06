@@ -1,0 +1,16 @@
+sequenceDiagram
+  participant Client as Client
+  participant API as FastAPI app
+  participant DB as PostgreSQL + pgvector
+  participant Ollama as Ollama
+  participant LLM as LLM
+
+  Client->>API: POST /ask (question, filters) + JWT(user)
+  API->>Ollama: embeddings(question)
+  API->>DB: similarity search (cosine distance) with metadata filters
+  DB-->>API: top-k chunks + sources
+  API->>LLM: prompt(question_for_prompt + context)
+  LLM-->>API: answer_text
+  API->>DB: INSERT ask_events + audit_log (redacted query)
+  API-->>Client: answer_text + sources
+

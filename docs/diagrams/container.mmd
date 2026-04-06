@@ -1,0 +1,10 @@
+flowchart LR
+  subgraph internal["Docker internal network"]
+    app[app: FastAPI service]
+    db[db: PostgreSQL + pgvector]
+    ollama[ollama: local LLM/embeddings]
+  end
+
+  app --> db
+  app --> ollama
+

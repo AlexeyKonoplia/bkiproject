@@ -1,0 +1,6 @@
+flowchart LR
+  user[Пользователь] --> api[FastAPI: /upload, /ask, /feedback]
+  api --> db[PostgreSQL + pgvector]
+  api --> ollama[Ollama (LLM + embeddings)]
+  api --> audit[Audit Log (БД)]
+

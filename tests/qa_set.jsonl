@@ -1,0 +1,21 @@
+{"id":"q01","question":"Как применяется порядок подготовки ответа на запрос клиента в регламенте?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q02","question":"Какие требования предъявляются к идентификации заявителя при обработке запроса?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q03","question":"Какие сроки установлены для рассмотрения обращения и подготовки ответа?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q04","question":"Какой порядок ведения журналов/аудита действий предусмотрен регламентом?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q05","question":"Какие категории документов учитываются при построении базы знаний?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q06","question":"Какие ограничения на использование персональных данных описаны в документе?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q07","question":"Как определяется актуальность регламентов по годам 2024–2025?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q08","question":"Какие шаги предусмотрены при загрузке PDF и разбиении текста на чанки?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q09","question":"Как реализуется семантический поиск в векторной базе pgvector?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q10","question":"Как формируется ответ на основе контекста, чтобы ограничить галлюцинации?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q11","question":"Как выполняется self-correction/проверка ответа на соответствие источникам?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q12","question":"Какие роли предусмотрены RBAC и какие действия разрешены администратору?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q13","question":"Какие действия разрешены пользователю в части работы с чат-ботом?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q14","question":"Какие данные должны логироваться в audit_log для запросов пользователей?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q15","question":"Как работает механизм обратной связи (лайк/дизлайк) и привязка к ask_event?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q16","question":"Как обрабатываются запросы при фильтрации по годам и категориям?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q17","question":"Какие требования предъявляются к цитированию источников в ответе?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q18","question":"Какие форматы загружаемых документов поддерживаются системой?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q19","question":"Как определяется последовательность: Вопрос -> Поиск -> Ответ в Orchestrator?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+{"id":"q20","question":"Как обеспечивается закрытый контур выполнения без внешних облачных вызовов?","doc_year_from":2024,"doc_year_to":2025,"expected_answer_substrings":[]}
+
