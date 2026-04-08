@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-bki}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}https://git-scm.com/docs/git-init
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-bki}"]
       interval: 5s
@@ -38,10 +38,20 @@ services:
       # LLM/Embeddings
       OLLAMA_BASE_URL: http://ollama:11434
       # Auth
+      AUTH_MODE: ${AUTH_MODE:-hybrid}
       JWT_SECRET: ${JWT_SECRET:-qweasdzxc}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
       ENABLE_BOOTSTRAP_ADMIN: ${ENABLE_BOOTSTRAP_ADMIN:-true}
+      PORTAL_JWT_SECRET: ${PORTAL_JWT_SECRET:-portal_secret_change_me}
+      PORTAL_JWT_ALGORITHM: ${PORTAL_JWT_ALGORITHM:-HS256}
+      PORTAL_JWT_ISSUER: ${PORTAL_JWT_ISSUER:-}
+      PORTAL_JWT_AUDIENCE: ${PORTAL_JWT_AUDIENCE:-}
+      PORTAL_SUB_CLAIM: ${PORTAL_SUB_CLAIM:-sub}
+      PORTAL_USERNAME_CLAIM: ${PORTAL_USERNAME_CLAIM:-preferred_username}
+      PORTAL_ROLES_CLAIM: ${PORTAL_ROLES_CLAIM:-roles}
+      PORTAL_AUTO_PROVISION_USERS: ${PORTAL_AUTO_PROVISION_USERS:-true}
     depends_on:
       db:
         condition: service_healthy

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Role, User, UserRole
 from app.db.session import get_db
+from app.config import settings
 from app.security.jwt import create_access_token, hash_password, verify_password
 from app.security.rbac import admin_required
 
@@ -27,6 +28,12 @@ class LoginResponse(BaseModel):
 
 @router.post("/auth/login", response_model=LoginResponse)
 async def login(req: LoginRequest, session: AsyncSession = Depends(get_db)) -> LoginResponse:
+    if settings.AUTH_MODE == "portal":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Local login disabled; use portal SSO token",
+        )
+
     stmt = select(User).where(User.username == req.username)
     res = await session.execute(stmt)
     user = res.scalar_one_or_none()
