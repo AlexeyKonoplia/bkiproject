@@ -80,6 +80,29 @@ Response:
 }
 ```
 
+## Ask last chunks
+`GET /ask/last-chunks`
+
+JWT: `user` (РёР»Рё `admin`)
+
+Response:
+```json
+{
+  "ask_event_id": "uuid...",
+  "request_id": "uuid...",
+  "question_text": "string",
+  "chunks": [
+    {
+      "chunk_id": "uuid...",
+      "file_name": "reglament.pdf",
+      "page_number": 3,
+      "chunk_text": "string"
+    }
+  ],
+  "retrieved_chunks": 5
+}
+```
+
 ## Feedback
 `POST /feedback`
 

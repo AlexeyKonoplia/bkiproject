@@ -13,6 +13,16 @@ class PageChunk:
     chunk_text: str
 
 
+def sanitize_text(text: Optional[str]) -> str:
+    """
+    Убирает символы, которые нельзя безопасно сохранить в PostgreSQL text/varchar.
+    Самый частый случай здесь — NUL (\x00), который иногда приезжает из PDF/DOCX.
+    """
+    if not text:
+        return ""
+    return text.replace("\x00", "").replace("\r\n", "\n").replace("\r", "\n")
+
+
 def chunk_pages(
     pages: Iterable[str],
     *,
@@ -31,13 +41,13 @@ def chunk_pages(
     out: List[PageChunk] = []
     for idx, page_text in enumerate(pages):
         page_number = idx + 1  # 1-based
-        normalized = (page_text or "").strip()
+        normalized = sanitize_text(page_text).strip()
         if not normalized:
             continue
 
         chunks = splitter.split_text(normalized)
         for c_idx, chunk_text in enumerate(chunks):
-            normalized_chunk = (chunk_text or "").strip()
+            normalized_chunk = sanitize_text(chunk_text).strip()
             if not normalized_chunk:
                 continue
             out.append(PageChunk(page_number=page_number, chunk_index=c_idx, chunk_text=normalized_chunk))

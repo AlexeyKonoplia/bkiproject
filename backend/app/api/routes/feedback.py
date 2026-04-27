@@ -47,30 +47,30 @@ async def feedback(
 
     comment_redacted = redact_text(req.comment) if req.comment else None
 
-    async with session.begin():
-        fb = Feedback(
-            ask_event_id=req.ask_event_id,
-            created_at=datetime.now(timezone.utc),
-            vote=req.vote,
-            comment=comment_redacted,
-        )
-        session.add(fb)
-        await session.flush()
+    fb = Feedback(
+        ask_event_id=req.ask_event_id,
+        created_at=datetime.now(timezone.utc),
+        vote=req.vote,
+        comment=comment_redacted,
+    )
+    session.add(fb)
+    await session.flush()
 
-        session.add(
-            AuditLog(
-                actor_user_id=actor.user_id,
-                created_at=datetime.now(timezone.utc),
-                action="feedback",
-                request_id=str(ask_event.request_id),
-                redacted_payload={
-                    "ask_event_id": str(req.ask_event_id),
-                    "vote": req.vote,
-                    "comment": comment_redacted,
-                },
-                status="ok",
-            )
+    session.add(
+        AuditLog(
+            actor_user_id=actor.user_id,
+            created_at=datetime.now(timezone.utc),
+            action="feedback",
+            request_id=str(ask_event.request_id),
+            redacted_payload={
+                "ask_event_id": str(req.ask_event_id),
+                "vote": req.vote,
+                "comment": comment_redacted,
+            },
+            status="ok",
         )
+    )
+    await session.commit()
 
     return FeedbackResponse(
         status="ok",

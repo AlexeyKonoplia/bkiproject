@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     # Embeddings / LLM defaults (used later in ingestion & RAG)
     EMBEDDING_MODEL: str = "nomic-embed-text"
     EMBEDDING_DIM: int = 768
-    LLM_MODEL: str = "llama3:8b"
+    LLM_MODEL: str = "gemma4:e4b"
 
     # Chunking defaults (used later in ingestion)
     CHUNK_SIZE: int = 1000

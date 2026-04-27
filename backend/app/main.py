@@ -9,6 +9,7 @@ from app.api.routes.ask import router as ask_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.feedback import router as feedback_router
 from app.api.routes.health import router as health_router
+from app.api.routes.tester_ui import router as tester_ui_router
 from app.api.routes.upload import router as upload_router
 from app.config import settings
 from app.db.models import Role, User, UserRole
@@ -22,6 +23,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="bki-support-rag", version="0.1.0")
     app.include_router(health_router)
     app.include_router(auth_router)
+    app.include_router(tester_ui_router)
     app.include_router(ask_router)
     app.include_router(upload_router)
     app.include_router(feedback_router)

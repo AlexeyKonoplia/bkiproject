@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-bki}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}https://git-scm.com/docs/git-init
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-bki}"]
       interval: 5s
@@ -19,6 +19,10 @@ services:
 
   ollama:
     image: ollama/ollama:latest
+    gpus: all
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
     volumes:
       - ollama_data:/root/.ollama
     networks:
@@ -37,6 +41,7 @@ services:
       POSTGRES_PORT: 5432
       # LLM/Embeddings
       OLLAMA_BASE_URL: http://ollama:11434
+      LLM_MODEL: ${LLM_MODEL:-gemma4:e4b}
       # Auth
       AUTH_MODE: ${AUTH_MODE:-hybrid}
       JWT_SECRET: ${JWT_SECRET:-qweasdzxc}
@@ -59,6 +64,50 @@ services:
         condition: service_started
     ports:
       - "8000:8000"
+    networks:
+      - internal
+
+  portal-api:
+    build:
+      context: ./portal_backend
+      dockerfile: Dockerfile
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bki}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      APP_API_URL: http://app:8000
+      AUTH_MODE: ${AUTH_MODE:-hybrid}
+      JWT_SECRET: ${JWT_SECRET:-qweasdzxc}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      PORTAL_JWT_SECRET: ${PORTAL_JWT_SECRET:-portal_secret_change_me}
+      PORTAL_JWT_ALGORITHM: ${PORTAL_JWT_ALGORITHM:-HS256}
+      PORTAL_JWT_ISSUER: ${PORTAL_JWT_ISSUER:-}
+      PORTAL_JWT_AUDIENCE: ${PORTAL_JWT_AUDIENCE:-}
+      PORTAL_SUB_CLAIM: ${PORTAL_SUB_CLAIM:-sub}
+      PORTAL_USERNAME_CLAIM: ${PORTAL_USERNAME_CLAIM:-preferred_username}
+      PORTAL_ROLES_CLAIM: ${PORTAL_ROLES_CLAIM:-roles}
+      PORTAL_AUTO_PROVISION_USERS: ${PORTAL_AUTO_PROVISION_USERS:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+    ports:
+      - "8001:8001"
+    networks:
+      - internal
+
+  portal-web:
+    build:
+      context: ./portal_frontend
+      dockerfile: Dockerfile
+    depends_on:
+      portal-api:
+        condition: service_started
+    ports:
+      - "8080:80"
     networks:
       - internal
 
