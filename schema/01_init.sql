@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS source_documents (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   file_name text NOT NULL,
   file_hash text UNIQUE,
+  description text,
   doc_year integer,
   doc_category text,
   is_active boolean NOT NULL DEFAULT true,

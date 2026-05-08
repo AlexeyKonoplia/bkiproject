@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 import { apiFetch, hasToken, isAdmin } from "../lib/api";
 
@@ -7,6 +7,7 @@ const uploadForm = ref({
   file: null,
   docYear: "",
   categoriesText: "",
+  description: "",
   isActive: true,
 });
 const uploadLoading = ref(false);
@@ -17,6 +18,12 @@ const loadingDocuments = ref(false);
 const documentsError = ref("");
 const actionLoadingId = ref("");
 const categoryDrafts = ref({});
+const metadataDrafts = ref({});
+const documentFilters = ref({
+  year: "",
+  category: "",
+  active: "all",
+});
 
 function parseCategoriesText(value) {
   return value
@@ -31,10 +38,17 @@ function categoriesToText(categories) {
 
 function syncCategoryDrafts(items) {
   const nextDrafts = {};
+  const nextMetadataDrafts = {};
   for (const item of items) {
     nextDrafts[item.id] = categoriesToText(item.categories);
+    nextMetadataDrafts[item.id] = {
+      fileName: item.file_name || "",
+      description: item.description || "",
+      docYear: item.doc_year || "",
+    };
   }
   categoryDrafts.value = nextDrafts;
+  metadataDrafts.value = nextMetadataDrafts;
 }
 
 async function loadDocuments() {
@@ -75,6 +89,9 @@ async function uploadDocument() {
     if (categories.length) {
       formData.append("doc_category", categories.join(", "));
     }
+    if (uploadForm.value.description) {
+      formData.append("description", uploadForm.value.description);
+    }
 
     formData.append("is_active", String(uploadForm.value.isActive));
 
@@ -87,6 +104,7 @@ async function uploadDocument() {
       file: null,
       docYear: "",
       categoriesText: "",
+      description: "",
       isActive: true,
     };
     await loadDocuments();
@@ -96,6 +114,24 @@ async function uploadDocument() {
     uploadLoading.value = false;
   }
 }
+
+const availableYears = computed(() => {
+  return [...new Set(documents.value.map((item) => item.doc_year).filter(Boolean))].sort((a, b) => b - a);
+});
+
+const availableCategories = computed(() => {
+  return [...new Set(documents.value.flatMap((item) => item.categories || []))].sort((a, b) => a.localeCompare(b, "ru"));
+});
+
+const filteredDocuments = computed(() => {
+  return documents.value.filter((item) => {
+    if (documentFilters.value.year && String(item.doc_year || "") !== String(documentFilters.value.year)) return false;
+    if (documentFilters.value.category && !(item.categories || []).includes(documentFilters.value.category)) return false;
+    if (documentFilters.value.active === "active" && !item.is_active) return false;
+    if (documentFilters.value.active === "inactive" && item.is_active) return false;
+    return true;
+  });
+});
 
 async function toggleStatus(item) {
   actionLoadingId.value = item.id;
@@ -119,6 +155,24 @@ async function saveCategories(item) {
     await apiFetch(`/api/documents/${item.id}/categories`, {
       method: "PATCH",
       body: JSON.stringify({ categories }),
+    });
+    await loadDocuments();
+  } finally {
+    actionLoadingId.value = "";
+  }
+}
+
+async function saveMetadata(item) {
+  actionLoadingId.value = item.id;
+  try {
+    const draft = metadataDrafts.value[item.id] || {};
+    await apiFetch(`/api/documents/${item.id}/metadata`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        file_name: draft.fileName || item.file_name,
+        description: draft.description || null,
+        doc_year: draft.docYear ? Number(draft.docYear) : null,
+      }),
     });
     await loadDocuments();
   } finally {
@@ -165,6 +219,10 @@ onMounted(async () => {
             type="text"
             placeholder="Категории через запятую, например: кредит, договор, регламент"
           />
+          <textarea
+            v-model="uploadForm.description"
+            placeholder="Описание документа"
+          ></textarea>
           <label class="toggle">
             <input v-model="uploadForm.isActive" type="checkbox" />
             Сразу активный
@@ -185,14 +243,51 @@ onMounted(async () => {
           <button class="ghost" :disabled="loadingDocuments" @click="loadDocuments">Обновить</button>
         </div>
 
+        <div class="filters-grid">
+          <select v-model="documentFilters.year">
+            <option value="">Все годы</option>
+            <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
+          </select>
+          <select v-model="documentFilters.category">
+            <option value="">Все категории</option>
+            <option v-for="category in availableCategories" :key="category" :value="category">{{ category }}</option>
+          </select>
+          <select v-model="documentFilters.active">
+            <option value="all">Все статусы</option>
+            <option value="active">Активные</option>
+            <option value="inactive">Неактивные</option>
+          </select>
+        </div>
+
         <div class="table-list">
-          <article v-for="item in documents" :key="item.id" class="doc-row">
+          <article v-for="item in filteredDocuments" :key="item.id" class="doc-row">
             <div class="doc-info">
               <strong>{{ item.file_name }}</strong>
               <small>{{ item.doc_year || "Без года" }} · {{ item.is_active ? "Активен" : "Неактивен" }}</small>
+              <small>Загрузил: {{ item.uploaded_by_username || item.uploaded_by || "Не указано" }}</small>
+              <p v-if="item.description" class="description-text">{{ item.description }}</p>
               <div class="chips">
                 <span v-for="category in item.categories" :key="category" class="chip">{{ category }}</span>
                 <span v-if="!item.categories.length" class="chip muted">Без категорий</span>
+              </div>
+              <div class="metadata-editor">
+                <input
+                  v-model="metadataDrafts[item.id].fileName"
+                  type="text"
+                  placeholder="Название документа"
+                />
+                <input
+                  v-model="metadataDrafts[item.id].docYear"
+                  type="number"
+                  placeholder="Год"
+                />
+                <textarea
+                  v-model="metadataDrafts[item.id].description"
+                  placeholder="Описание"
+                ></textarea>
+                <button class="ghost" :disabled="actionLoadingId === item.id" @click="saveMetadata(item)">
+                  Сохранить метаданные
+                </button>
               </div>
               <div class="categories-editor">
                 <input
@@ -258,21 +353,37 @@ onMounted(async () => {
 
 .form-grid,
 .table-list,
-.doc-info {
+.doc-info,
+.filters-grid,
+.metadata-editor {
   display: grid;
   gap: 12px;
 }
 
 input,
-button {
+button,
+textarea,
+select {
   font: inherit;
 }
 
-input {
+input,
+textarea,
+select {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
   padding: 12px 14px;
+}
+
+textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.filters-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 12px;
 }
 
 .toggle {
@@ -328,6 +439,15 @@ input {
   flex: 1;
 }
 
+.metadata-editor {
+  grid-template-columns: minmax(180px, 1fr) 120px;
+}
+
+.metadata-editor textarea,
+.metadata-editor button {
+  grid-column: 1 / -1;
+}
+
 .primary,
 .ghost,
 .danger {
@@ -359,6 +479,11 @@ input {
   color: var(--text);
 }
 
+.description-text {
+  margin: 0;
+  color: var(--text);
+}
+
 .error-text {
   color: var(--danger);
 }
@@ -373,6 +498,11 @@ input {
   .categories-editor {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .filters-grid,
+  .metadata-editor {
+    grid-template-columns: 1fr;
   }
 }
 </style>

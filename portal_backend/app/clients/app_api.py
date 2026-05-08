@@ -14,13 +14,25 @@ class UpstreamApiError(RuntimeError):
         super().__init__(str(payload))
 
 
+class UpstreamApiTimeout(RuntimeError):
+    pass
+
+
 async def post_json(path: str, payload: dict[str, Any], *, authorization: str | None = None) -> Any:
     headers: dict[str, str] = {"Content-Type": "application/json"}
     if authorization:
         headers["Authorization"] = authorization
 
-    async with httpx.AsyncClient(base_url=settings.APP_API_URL, timeout=60.0) as client:
-        response = await client.post(path, json=payload, headers=headers)
+    try:
+        async with httpx.AsyncClient(
+            base_url=settings.APP_API_URL,
+            timeout=settings.APP_API_TIMEOUT_SECONDS,
+        ) as client:
+            response = await client.post(path, json=payload, headers=headers)
+    except httpx.TimeoutException as exc:
+        raise UpstreamApiTimeout(
+            f"Upstream app API timed out after {settings.APP_API_TIMEOUT_SECONDS:g} seconds"
+        ) from exc
 
     try:
         data = response.json()

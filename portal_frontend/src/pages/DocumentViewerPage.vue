@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 import { apiFetch, hasToken } from "../lib/api";
@@ -14,6 +14,11 @@ const contentQuery = ref("");
 const matches = ref([]);
 const focusedPage = ref(null);
 const focusedSource = ref(null);
+const documentFilters = ref({
+  year: "",
+  category: "",
+  active: "active",
+});
 
 function escapeHtml(value) {
   return String(value)
@@ -45,13 +50,38 @@ async function loadDocuments() {
   loadingDocuments.value = true;
   documentsError.value = "";
   try {
-    const payload = await apiFetch("/api/documents?only_active=true&limit=100");
+    const params = new URLSearchParams({
+      only_active: documentFilters.value.active === "active" ? "true" : "false",
+      limit: "200",
+    });
+    if (documentFilters.value.year) params.set("doc_year", documentFilters.value.year);
+    if (documentFilters.value.category) params.set("doc_category", documentFilters.value.category);
+    if (documentFilters.value.active !== "all") {
+      params.set("is_active", documentFilters.value.active === "active" ? "true" : "false");
+    }
+    const payload = await apiFetch(`/api/documents?${params.toString()}`);
     documents.value = payload.items || [];
   } catch (error) {
     documentsError.value = error.message || String(error);
   } finally {
     loadingDocuments.value = false;
   }
+}
+
+const availableYears = computed(() => {
+  return [...new Set(documents.value.map((item) => item.doc_year).filter(Boolean))].sort((a, b) => b - a);
+});
+
+const availableCategories = computed(() => {
+  return [...new Set(documents.value.flatMap((item) => item.categories || []))].sort((a, b) => a.localeCompare(b, "ru"));
+});
+
+function formatDateTime(value) {
+  if (!value) return "Не указано";
+  return new Intl.DateTimeFormat("ru-RU", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
 async function openDocument(documentId, options = {}) {
@@ -138,6 +168,22 @@ watch(
       </div>
 
       <div class="document-list">
+        <div class="filters-grid">
+          <select v-model="documentFilters.year" @change="loadDocuments">
+            <option value="">Все годы</option>
+            <option v-for="year in availableYears" :key="year" :value="year">{{ year }}</option>
+          </select>
+          <select v-model="documentFilters.category" @change="loadDocuments">
+            <option value="">Все категории</option>
+            <option v-for="category in availableCategories" :key="category" :value="category">{{ category }}</option>
+          </select>
+          <select v-model="documentFilters.active" @change="loadDocuments">
+            <option value="active">Активные</option>
+            <option value="inactive">Неактивные</option>
+            <option value="all">Все статусы</option>
+          </select>
+        </div>
+
         <button
           v-for="item in documents"
           :key="item.id"
@@ -147,6 +193,7 @@ watch(
         >
           <strong>{{ item.file_name }}</strong>
           <span>{{ item.doc_category || "Без категории" }}</span>
+          <small>{{ item.doc_year || "Без года" }} · {{ item.is_active ? "Активен" : "Неактивен" }}</small>
         </button>
       </div>
 
@@ -163,6 +210,29 @@ watch(
       </div>
 
       <template v-if="selectedDocument">
+        <div class="metadata-grid">
+          <div>
+            <span>Загрузил</span>
+            <strong>{{ selectedDocument.uploaded_by_username || selectedDocument.uploaded_by || "Не указано" }}</strong>
+          </div>
+          <div>
+            <span>Дата загрузки</span>
+            <strong>{{ formatDateTime(selectedDocument.created_at) }}</strong>
+          </div>
+          <div>
+            <span>Год</span>
+            <strong>{{ selectedDocument.doc_year || "Не указан" }}</strong>
+          </div>
+          <div>
+            <span>Статус</span>
+            <strong>{{ selectedDocument.is_active ? "Активен" : "Неактивен" }}</strong>
+          </div>
+          <div class="metadata-wide">
+            <span>Описание</span>
+            <strong>{{ selectedDocument.description || "Описание не добавлено" }}</strong>
+          </div>
+        </div>
+
         <div v-if="focusedSource" class="focus-banner">
           <strong>Фрагмент из ответа модели</strong>
           <p>{{ focusedSource.chunk_text }}</p>
@@ -245,7 +315,8 @@ watch(
 
 .document-item,
 .ghost,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -280,6 +351,47 @@ input {
   background: var(--surface);
   color: var(--text);
   padding: 12px 14px;
+}
+
+select {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 12px 14px;
+}
+
+.filters-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.metadata-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.metadata-grid > div {
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.metadata-grid span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.metadata-grid strong {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.metadata-wide {
+  grid-column: 1 / -1;
 }
 
 .ghost {
@@ -339,6 +451,10 @@ pre {
 
 @media (max-width: 1100px) {
   .viewer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metadata-grid {
     grid-template-columns: 1fr;
   }
 }

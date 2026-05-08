@@ -78,6 +78,7 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       APP_API_URL: http://app:8000
+      APP_API_TIMEOUT_SECONDS: ${APP_API_TIMEOUT_SECONDS:-180}
       AUTH_MODE: ${AUTH_MODE:-hybrid}
       JWT_SECRET: ${JWT_SECRET:-qweasdzxc}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}

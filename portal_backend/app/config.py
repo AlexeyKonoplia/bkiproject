@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
 
     APP_API_URL: str = "http://app:8000"
+    APP_API_TIMEOUT_SECONDS: float = 180.0
 
     JWT_SECRET: str = "change_me_super_secret"
     JWT_ALGORITHM: str = "HS256"
@@ -38,4 +39,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-

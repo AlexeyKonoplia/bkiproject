@@ -10,9 +10,9 @@ from sqlalchemy import Select, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clients.app_api import UpstreamApiError, post_multipart
-from app.db.models import SourceDocument, TextChunk
+from app.db.models import SourceDocument, TextChunk, User
 from app.db.session import get_db
-from app.documents.categories import categories_label, normalize_categories, parse_categories
+from app.documents.categories import category_membership_condition, categories_label, normalize_categories, parse_categories
 from app.security.jwt import admin_required, user_required
 
 router = APIRouter(prefix="/api/documents", tags=["documents"], dependencies=[Depends(user_required)])
@@ -21,11 +21,14 @@ router = APIRouter(prefix="/api/documents", tags=["documents"], dependencies=[De
 class DocumentSummary(BaseModel):
     id: str
     file_name: str
+    description: Optional[str] = None
     doc_year: Optional[int] = None
     doc_category: Optional[str] = None
     categories: list[str] = Field(default_factory=list)
     is_active: bool
     created_at: datetime
+    uploaded_by: Optional[str] = None
+    uploaded_by_username: Optional[str] = None
     chunk_count: int
     page_count: int
     matched_chunks: int = 0
@@ -45,11 +48,14 @@ class DocumentPage(BaseModel):
 class DocumentDetail(BaseModel):
     id: str
     file_name: str
+    description: Optional[str] = None
     doc_year: Optional[int] = None
     doc_category: Optional[str] = None
     categories: list[str] = Field(default_factory=list)
     is_active: bool
     created_at: datetime
+    uploaded_by: Optional[str] = None
+    uploaded_by_username: Optional[str] = None
     page_count: int
     chunk_count: int
     content_text: str
@@ -70,9 +76,18 @@ class DocumentCategoriesUpdateRequest(BaseModel):
     categories: list[str] = Field(default_factory=list)
 
 
+class DocumentMetadataUpdateRequest(BaseModel):
+    file_name: Optional[str] = Field(None, min_length=1, max_length=500)
+    description: Optional[str] = Field(None, max_length=4000)
+    doc_year: Optional[int] = None
+
+
 class AdminDocumentMutationResponse(BaseModel):
     id: str
     status: str
+    file_name: Optional[str] = None
+    description: Optional[str] = None
+    doc_year: Optional[int] = None
     is_active: Optional[bool] = None
     doc_category: Optional[str] = None
     categories: list[str] = Field(default_factory=list)
@@ -168,14 +183,26 @@ def _apply_document_filters(
     query: Optional[str],
     only_active: bool,
     content_query: Optional[str],
+    doc_year: Optional[int],
+    doc_category: Optional[str],
+    is_active: Optional[bool],
 ) -> Select:
-    if only_active:
+    if is_active is not None:
+        stmt = stmt.where(SourceDocument.is_active.is_(is_active))
+    elif only_active:
         stmt = stmt.where(SourceDocument.is_active.is_(True))
+    if doc_year is not None:
+        stmt = stmt.where(SourceDocument.doc_year == doc_year)
+    if doc_category:
+        category_condition = category_membership_condition(SourceDocument.doc_category, doc_category)
+        if category_condition is not None:
+            stmt = stmt.where(category_condition)
     if query:
         pattern = f"%{query}%"
         stmt = stmt.where(
             or_(
                 SourceDocument.file_name.ilike(pattern),
+                SourceDocument.description.ilike(pattern),
                 SourceDocument.doc_category.ilike(pattern),
             )
         )
@@ -193,6 +220,7 @@ def _apply_document_filters(
 def _summary_from_document(
     doc: SourceDocument,
     *,
+    uploaded_by_username: Optional[str],
     chunk_count_by_doc: dict[str, int],
     page_count_by_doc: dict[str, int],
     matched_chunks_by_doc: dict[str, int],
@@ -202,11 +230,14 @@ def _summary_from_document(
     return DocumentSummary(
         id=str(doc.id),
         file_name=doc.file_name,
+        description=doc.description,
         doc_year=doc.doc_year,
         doc_category=categories_label(doc.doc_category),
         categories=parsed_categories,
         is_active=doc.is_active,
         created_at=doc.created_at,
+        uploaded_by=str(doc.uploaded_by) if doc.uploaded_by else None,
+        uploaded_by_username=uploaded_by_username,
         chunk_count=chunk_count_by_doc.get(str(doc.id), 0),
         page_count=page_count_by_doc.get(str(doc.id), 0),
         matched_chunks=matched_chunks_by_doc.get(str(doc.id), 0),
@@ -219,6 +250,9 @@ async def list_documents(
     query: Optional[str] = Query(None, description="Search by file name or category"),
     content_query: Optional[str] = Query(None, description="Search by document content"),
     only_active: bool = True,
+    doc_year: Optional[int] = None,
+    doc_category: Optional[str] = None,
+    is_active: Optional[bool] = None,
     limit: int = Query(20, ge=1, le=200),
     offset: int = Query(0, ge=0),
     session: AsyncSession = Depends(get_db),
@@ -231,6 +265,9 @@ async def list_documents(
         query=normalized_query,
         only_active=only_active,
         content_query=normalized_content_query,
+        doc_year=doc_year,
+        doc_category=_normalize_query(doc_category),
+        is_active=is_active,
     )
 
     total = int((await session.execute(select(func.count()).select_from(base_stmt.subquery()))).scalar_one())
@@ -239,6 +276,14 @@ async def list_documents(
             base_stmt.order_by(SourceDocument.created_at.desc()).offset(offset).limit(limit)
         )
     ).scalars().all()
+
+    uploader_ids = [doc.uploaded_by for doc in documents if doc.uploaded_by]
+    uploader_names_by_id: dict[str, str] = {}
+    if uploader_ids:
+        uploader_rows = (
+            await session.execute(select(User.id, User.username).where(User.id.in_(uploader_ids)))
+        ).all()
+        uploader_names_by_id = {str(user_id): username for user_id, username in uploader_rows}
 
     doc_ids = [doc.id for doc in documents]
     chunk_count_by_doc, page_count_by_doc = await _get_doc_stats(session, doc_ids)
@@ -253,6 +298,7 @@ async def list_documents(
         items=[
             _summary_from_document(
                 doc,
+                uploaded_by_username=uploader_names_by_id.get(str(doc.uploaded_by)) if doc.uploaded_by else None,
                 chunk_count_by_doc=chunk_count_by_doc,
                 page_count_by_doc=page_count_by_doc,
                 matched_chunks_by_doc=matched_chunks_by_doc,
@@ -268,7 +314,18 @@ async def get_document(
     document_id: UUID,
     session: AsyncSession = Depends(get_db),
 ) -> DocumentDetail:
-    document = (await session.execute(select(SourceDocument).where(SourceDocument.id == document_id))).scalar_one_or_none()
+    row = (
+        await session.execute(
+            select(SourceDocument, User.username)
+            .outerjoin(User, SourceDocument.uploaded_by == User.id)
+            .where(SourceDocument.id == document_id)
+        )
+    ).one_or_none()
+    if row is None:
+        document = None
+        uploaded_by_username = None
+    else:
+        document, uploaded_by_username = row
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
@@ -285,11 +342,14 @@ async def get_document(
         return DocumentDetail(
             id=str(document.id),
             file_name=document.file_name,
+            description=document.description,
             doc_year=document.doc_year,
             doc_category=categories_label(document.doc_category),
             categories=parsed_categories,
             is_active=document.is_active,
             created_at=document.created_at,
+            uploaded_by=str(document.uploaded_by) if document.uploaded_by else None,
+            uploaded_by_username=uploaded_by_username,
             page_count=0,
             chunk_count=0,
             content_text="",
@@ -309,11 +369,14 @@ async def get_document(
     return DocumentDetail(
         id=str(document.id),
         file_name=document.file_name,
+        description=document.description,
         doc_year=document.doc_year,
         doc_category=categories_label(document.doc_category),
         categories=parsed_categories,
         is_active=document.is_active,
         created_at=document.created_at,
+        uploaded_by=str(document.uploaded_by) if document.uploaded_by else None,
+        uploaded_by_username=uploaded_by_username,
         page_count=len(ordered_pages),
         chunk_count=len(chunks),
         content_text=content_text,
@@ -362,6 +425,7 @@ async def upload_document(
     file: UploadFile = File(...),
     doc_year: Optional[int] = Form(None),
     doc_category: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
     is_active: bool = Form(True),
     actor=Depends(admin_required),
 ) -> dict:
@@ -375,6 +439,7 @@ async def upload_document(
             data={
                 "doc_year": "" if doc_year is None else str(doc_year),
                 "doc_category": normalize_categories(doc_category) or "",
+                "description": description or "",
                 "is_active": str(is_active).lower(),
             },
             files={
@@ -415,6 +480,60 @@ async def update_document_status(
         is_active=updated_row.is_active,
         doc_category=categories_label(updated_row.doc_category),
         categories=parse_categories(updated_row.doc_category),
+    )
+
+
+@router.patch("/{document_id}/metadata", response_model=AdminDocumentMutationResponse)
+async def update_document_metadata(
+    document_id: UUID,
+    req: DocumentMetadataUpdateRequest,
+    session: AsyncSession = Depends(get_db),
+    actor=Depends(admin_required),
+) -> AdminDocumentMutationResponse:
+    del actor
+    values = {}
+    fields_set = getattr(req, "model_fields_set", getattr(req, "__fields_set__", set()))
+    if "file_name" in fields_set and req.file_name is not None:
+        cleaned_file_name = req.file_name.strip()
+        if not cleaned_file_name:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File name cannot be empty")
+        values["file_name"] = cleaned_file_name
+    if "description" in fields_set:
+        values["description"] = (req.description.strip() or None) if req.description is not None else None
+    if "doc_year" in fields_set:
+        values["doc_year"] = req.doc_year
+
+    if not values:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No metadata fields to update")
+
+    result = await session.execute(
+        update(SourceDocument)
+        .where(SourceDocument.id == document_id)
+        .values(**values)
+        .returning(SourceDocument.id, SourceDocument.file_name, SourceDocument.description, SourceDocument.doc_year)
+    )
+    updated_row = result.one_or_none()
+    if updated_row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    chunk_values = {}
+    if "doc_year" in values:
+        chunk_values["doc_year"] = values["doc_year"]
+    if chunk_values:
+        await session.execute(
+            update(TextChunk)
+            .where(TextChunk.source_document_id == document_id)
+            .values(**chunk_values)
+        )
+
+    await session.commit()
+
+    return AdminDocumentMutationResponse(
+        id=str(updated_row.id),
+        status="updated",
+        file_name=updated_row.file_name,
+        description=updated_row.description,
+        doc_year=updated_row.doc_year,
     )
 
 

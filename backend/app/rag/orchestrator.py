@@ -131,6 +131,7 @@ async def answer_question(
     doc_year_from: Optional[int] = None,
     doc_year_to: Optional[int] = None,
     doc_category: Optional[str] = None,
+    answer_mode: str = "detailed",
 ) -> Dict[str, Any]:
     chunks = await retrieve_relevant_chunks(
         session,
@@ -156,7 +157,7 @@ async def answer_question(
         context_with_sources.append((source_label, chunk.chunk_text))
 
     prompt_question = question_for_prompt or question
-    user_prompt = build_user_prompt(prompt_question, context_with_sources)
+    user_prompt = build_user_prompt(prompt_question, context_with_sources, answer_mode=answer_mode)
     sys_prompt = system_prompt_russian()
 
     llm = ChatOllama(

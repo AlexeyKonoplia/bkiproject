@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.clients.app_api import UpstreamApiError, post_json
+from app.clients.app_api import UpstreamApiError, UpstreamApiTimeout, post_json
 from app.security.jwt import user_required
 
 router = APIRouter(prefix="/api/chat", tags=["chat"], dependencies=[Depends(user_required)])
@@ -25,6 +25,7 @@ class ChatRequest(BaseModel):
     doc_year_from: Optional[int] = None
     doc_year_to: Optional[int] = None
     doc_category: Optional[str] = None
+    answer_mode: Literal["brief", "detailed", "extract"] = "detailed"
 
 
 class ChatResponse(BaseModel):
@@ -64,10 +65,13 @@ async def chat(
         "doc_year_from": req.doc_year_from,
         "doc_year_to": req.doc_year_to,
         "doc_category": req.doc_category,
+        "answer_mode": req.answer_mode,
     }
 
     try:
         response_payload = await post_json("/ask", payload, authorization=authorization)
+    except UpstreamApiTimeout as exc:
+        raise HTTPException(status_code=504, detail=str(exc)) from exc
     except UpstreamApiError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.payload) from exc
 

@@ -9,7 +9,7 @@ MULTI_CATEGORY_SEPARATOR = "|"
 
 
 def _normalize_single_category(value: str) -> str:
-    cleaned = " ".join(value.strip().lower().split())
+    cleaned = " ".join(value.strip().casefold().split())
     return cleaned.strip(MULTI_CATEGORY_SEPARATOR).strip(",")
 
 

@@ -35,6 +35,7 @@ async def upload(
     file: UploadFile = File(...),
     doc_year: Optional[int] = Form(None),
     doc_category: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
     is_active: bool = Form(True),
     session=Depends(get_db),
     actor=Depends(admin_required),
@@ -44,6 +45,7 @@ async def upload(
         return {"error": "Empty file"}
 
     normalized_doc_category = normalize_categories(doc_category)
+    normalized_description = sanitize_text(description).strip() if description else None
 
     filename = sanitize_text(file.filename or "uploaded")
     redacted_filename = redact_text(filename)
@@ -68,6 +70,7 @@ async def upload(
                     "file_hash": file_hash,
                     "doc_year": doc_year,
                     "doc_category": normalized_doc_category,
+                    "description": normalized_description,
                 },
                 status="already_indexed",
             )
@@ -99,6 +102,7 @@ async def upload(
         file_hash=file_hash,
         doc_year=doc_year,
         doc_category=normalized_doc_category,
+        description=normalized_description,
         is_active=is_active,
         uploaded_by=actor.user_id,
     )
@@ -159,6 +163,7 @@ async def upload(
                 "file_hash": file_hash,
                 "doc_year": doc_year,
                 "doc_category": normalized_doc_category,
+                "description": normalized_description,
                 "chunks_count": len(chunk_objs),
                 "pages_count": len(pages),
             },

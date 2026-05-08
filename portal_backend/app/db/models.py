@@ -69,9 +69,15 @@ class SourceDocument(Base):
     )
     file_name: Mapped[str] = mapped_column(Text, nullable=False)
     file_hash: Mapped[Optional[str]] = mapped_column(Text, nullable=True, unique=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     doc_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     doc_category: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    uploaded_by: Mapped[Optional[UUID]] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utcnow,
@@ -97,4 +103,5 @@ class TextChunk(Base):
     page_number: Mapped[int] = mapped_column(Integer, nullable=False)
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
     chunk_text: Mapped[str] = mapped_column(Text, nullable=False)
+    doc_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     doc_category: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

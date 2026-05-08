@@ -103,6 +103,7 @@ class SourceDocument(Base):
     )
     file_name: Mapped[str] = mapped_column(Text, nullable=False)
     file_hash: Mapped[Optional[str]] = mapped_column(Text, nullable=True, unique=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     doc_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     doc_category: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

@@ -1,0 +1,81 @@
+erDiagram
+    USERS {
+        uuid id PK
+        text username UK
+        text password_hash
+        timestamptz created_at
+    }
+
+    ROLES {
+        uuid id PK
+        text name UK
+        timestamptz created_at
+    }
+
+    USER_ROLES {
+        uuid user_id PK, FK
+        uuid role_id PK, FK
+        timestamptz created_at
+    }
+
+    SOURCE_DOCUMENTS {
+        uuid id PK
+        text file_name
+        text file_hash UK
+        text description
+        integer doc_year
+        text doc_category
+        boolean is_active
+        uuid uploaded_by FK
+        timestamptz created_at
+    }
+
+    TEXT_CHUNKS {
+        uuid id PK
+        uuid source_document_id FK
+        integer page_number
+        integer chunk_index
+        text chunk_text
+        text section_title
+        integer doc_year
+        text doc_category
+        vector embedding
+        tsvector search_vector
+        timestamptz created_at
+    }
+
+    ASK_EVENTS {
+        uuid id PK
+        uuid actor_user_id FK
+        timestamptz created_at
+        text request_id
+        text query_text_redacted
+        text model
+        text status
+    }
+
+    FEEDBACK {
+        uuid id PK
+        uuid ask_event_id FK
+        timestamptz created_at
+        smallint vote
+        text comment
+    }
+
+    AUDIT_LOG {
+        bigserial id PK
+        timestamptz created_at
+        uuid actor_user_id FK
+        text action
+        text request_id
+        jsonb redacted_payload
+        text status
+    }
+
+    USERS ||--o{ USER_ROLES : has
+    ROLES ||--o{ USER_ROLES : assigned
+    USERS ||--o{ SOURCE_DOCUMENTS : uploads
+    SOURCE_DOCUMENTS ||--o{ TEXT_CHUNKS : contains
+    USERS ||--o{ ASK_EVENTS : asks
+    ASK_EVENTS ||--o{ FEEDBACK : receives
+    USERS ||--o{ AUDIT_LOG : performs

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -31,6 +31,7 @@ class AskRequest(BaseModel):
     doc_year_from: Optional[int] = None
     doc_year_to: Optional[int] = None
     doc_category: Optional[str] = None
+    answer_mode: Literal["brief", "detailed", "extract"] = "detailed"
 
     # Optional request id for traceability.
     request_id: Optional[str] = None
@@ -275,6 +276,7 @@ async def ask(
         doc_year_from=req.doc_year_from,
         doc_year_to=req.doc_year_to,
         doc_category=req.doc_category,
+        answer_mode=req.answer_mode,
     )
 
     ask_event = AskEvent(
@@ -302,6 +304,7 @@ async def ask(
                 "doc_year_from": req.doc_year_from,
                 "doc_year_to": req.doc_year_to,
                 "doc_category": req.doc_category,
+                "answer_mode": req.answer_mode,
                 "retrieved_chunks": rag_result["retrieved_chunks"],
                 "retrieved_sources": rag_result["sources"],
             },

@@ -99,6 +99,17 @@ def create_app() -> FastAPI:
         logger.exception("Bootstrap admin failed after all retries", exc_info=last_err)
         raise RuntimeError("DB seed admin failed after retries") from last_err
 
+    @app.on_event("startup")
+    async def _ensure_document_metadata_columns() -> None:
+        async with SessionLocal() as session:
+            await session.execute(
+                text("ALTER TABLE source_documents ADD COLUMN IF NOT EXISTS description TEXT")
+            )
+            await session.execute(
+                text("ALTER TABLE source_documents ADD COLUMN IF NOT EXISTS uploaded_by UUID")
+            )
+            await session.commit()
+
     return app
 
 
