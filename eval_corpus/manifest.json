@@ -1,0 +1,34 @@
+[
+  {
+    "file_name": "eval_reglament_client_requests_2025.docx",
+    "path": "documents/eval_reglament_client_requests_2025.docx",
+    "doc_year": 2025,
+    "doc_category": "регламент, клиентские запросы",
+    "description": "Синтетический документ для проверки RAG по клиентским запросам.",
+    "is_active": true
+  },
+  {
+    "file_name": "eval_knowledge_base_ingestion_2025.docx",
+    "path": "documents/eval_knowledge_base_ingestion_2025.docx",
+    "doc_year": 2025,
+    "doc_category": "база знаний, загрузка документов",
+    "description": "Синтетический документ для проверки ingestion и метаданных.",
+    "is_active": true
+  },
+  {
+    "file_name": "eval_security_audit_2025.docx",
+    "path": "documents/eval_security_audit_2025.docx",
+    "doc_year": 2025,
+    "doc_category": "безопасность, аудит",
+    "description": "Синтетический документ для проверки безопасности, RBAC и аудита.",
+    "is_active": true
+  },
+  {
+    "file_name": "eval_rag_answer_policy_2025.docx",
+    "path": "documents/eval_rag_answer_policy_2025.docx",
+    "doc_year": 2025,
+    "doc_category": "rag, качество ответов",
+    "description": "Синтетический документ для проверки groundedness ответов.",
+    "is_active": true
+  }
+]

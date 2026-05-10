@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from uuid import UUID
-
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.ingest.embedder import embed_texts
+from app.rag.llm import build_chat_llm
 from app.rag.prompts import build_user_prompt, system_prompt_russian
 from app.rag.retrieval import RetrievedChunk, keyword_search, literal_search, similarity_search
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 INSUFFICIENT_INFO_ANSWER = "Insufficient information to answer."
 
@@ -160,11 +160,9 @@ async def answer_question(
     user_prompt = build_user_prompt(prompt_question, context_with_sources, answer_mode=answer_mode)
     sys_prompt = system_prompt_russian()
 
-    llm = ChatOllama(
-        model=settings.LLM_MODEL,
-        base_url=settings.OLLAMA_BASE_URL,
-        temperature=0.0,
-    )
+    from langchain_core.messages import HumanMessage, SystemMessage
+
+    llm = build_chat_llm()
 
     messages = [SystemMessage(sys_prompt), HumanMessage(user_prompt)]
     llm_response = llm.invoke(messages)
@@ -188,7 +186,8 @@ async def answer_question(
             "Check whether the answer is supported by the context."
         )
         verification_messages = [SystemMessage(verification_sys), HumanMessage(verification_user)]
-        verification_llm_response = llm.invoke(verification_messages)
+        verifier_llm = build_chat_llm(model=settings.VERIFIER_LLM_MODEL)
+        verification_llm_response = verifier_llm.invoke(verification_messages)
         verification_raw = getattr(verification_llm_response, "content", str(verification_llm_response))
 
         verdict = "supported"

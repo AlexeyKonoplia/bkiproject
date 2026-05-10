@@ -41,7 +41,12 @@ services:
       POSTGRES_PORT: 5432
       # LLM/Embeddings
       OLLAMA_BASE_URL: http://ollama:11434
-      LLM_MODEL: ${LLM_MODEL:-gemma4:e4b}
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b}
+      VERIFIER_LLM_MODEL: ${VERIFIER_LLM_MODEL:-qwen2.5:3b}
+      LLM_NUM_CTX: ${LLM_NUM_CTX:-4096}
+      LLM_NUM_PREDICT: ${LLM_NUM_PREDICT:-512}
+      LLM_KEEP_ALIVE: ${LLM_KEEP_ALIVE:-10m}
+      ENABLE_SELF_CORRECTION: ${ENABLE_SELF_CORRECTION:-false}
       # Auth
       AUTH_MODE: ${AUTH_MODE:-hybrid}
       JWT_SECRET: ${JWT_SECRET:-qweasdzxc}

@@ -30,13 +30,17 @@ class Settings(BaseSettings):
     # Embeddings / LLM defaults (used later in ingestion & RAG)
     EMBEDDING_MODEL: str = "nomic-embed-text"
     EMBEDDING_DIM: int = 768
-    LLM_MODEL: str = "gemma4:e4b"
+    LLM_MODEL: str = "qwen2.5:7b"
+    VERIFIER_LLM_MODEL: str | None = None
+    LLM_NUM_CTX: int = 4096
+    LLM_NUM_PREDICT: int = 512
+    LLM_KEEP_ALIVE: str = "10m"
 
     # Chunking defaults (used later in ingestion)
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 150
 
-    ENABLE_SELF_CORRECTION: bool = True
+    ENABLE_SELF_CORRECTION: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

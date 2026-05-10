@@ -13,6 +13,7 @@ from app.config import settings
 from app.db.models import AuditLog, AskEvent, SourceDocument, TextChunk
 from app.db.session import get_db
 from app.rag.orchestrator import answer_question, retrieve_relevant_chunks
+from app.rag.llm import OllamaModelNotAvailable
 from app.rag.retrieval import RetrievedChunk
 from app.security.jwt import Actor
 from app.security.redaction import redact_text
@@ -267,17 +268,23 @@ async def ask(
         else redacted_question
     )
 
-    rag_result = await answer_question(
-        session,
-        question=req.question,
-        question_for_prompt=redacted_question_for_prompt,
-        top_k=req.top_k,
-        source_document_id=req.source_document_id,
-        doc_year_from=req.doc_year_from,
-        doc_year_to=req.doc_year_to,
-        doc_category=req.doc_category,
-        answer_mode=req.answer_mode,
-    )
+    try:
+        rag_result = await answer_question(
+            session,
+            question=req.question,
+            question_for_prompt=redacted_question_for_prompt,
+            top_k=req.top_k,
+            source_document_id=req.source_document_id,
+            doc_year_from=req.doc_year_from,
+            doc_year_to=req.doc_year_to,
+            doc_category=req.doc_category,
+            answer_mode=req.answer_mode,
+        )
+    except OllamaModelNotAvailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
 
     ask_event = AskEvent(
         actor_user_id=actor.user_id,

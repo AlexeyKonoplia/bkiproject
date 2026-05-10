@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List
 
-from langchain_ollama import OllamaEmbeddings
+from app.rag.llm import ensure_ollama_model_available
 
 
 def embed_texts(
@@ -16,6 +16,12 @@ def embed_texts(
     """
     if not texts:
         return []
+
+    ensure_ollama_model_available(
+        model=embedding_model,
+        base_url=ollama_base_url,
+    )
+    from langchain_ollama import OllamaEmbeddings
 
     embeddings = OllamaEmbeddings(model=embedding_model, base_url=ollama_base_url)
     return embeddings.embed_documents(texts)
